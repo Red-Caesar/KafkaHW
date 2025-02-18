@@ -7,7 +7,7 @@ This application provides a fast and efficient way to analyze selected stocks. Y
 - **Monitor Real-Time Prices**: Track stock prices as they change in real time.
   ![Real-Time Prices Example](gifs/real_time_price.gif)
 
-- **Make Predictions**: Utilize linear regression or exponential moving averages to forecast future closing prices.
+- **Make Predictions**: Utilize linear regression or exponential moving averages to forecast closing prices.
   ![Prediction Example](gifs/predictions.gif)
 
 ### Launch
