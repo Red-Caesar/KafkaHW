@@ -7,10 +7,10 @@ from typing import Dict, Any
 
 
 class StockDataConsumer:
-    def __init__(self, topic: str):
+    def __init__(self, topic: str, kafka_host: str):
         self.consumer = KafkaConsumer(
             topic,
-            bootstrap_servers=["kafka:9092"],
+            bootstrap_servers=[f"{kafka_host}:9092"],
             value_deserializer=lambda x: json.loads(x.decode("utf-8")),
             auto_offset_reset="latest",
             enable_auto_commit=True,

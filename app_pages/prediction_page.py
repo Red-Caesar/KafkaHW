@@ -3,7 +3,9 @@ import plotly.graph_objects as go
 import pandas as pd
 
 
-def ml_prediction_page(processor):
+def ml_prediction_page():
+    if "processor" in st.session_state:
+        processor = st.session_state["processor"]
     st.header("Stock Price Prediction")
 
     symbol = st.text_input(

@@ -5,7 +5,9 @@ from time import sleep
 from datetime import datetime, timedelta
 
 
-def realtime_page(processor):
+def realtime_page():
+    if "processor" in st.session_state:
+        processor = st.session_state["processor"]
     st.header("Real-Time Stock Data Visualization")
 
     col1, col2, col3 = st.columns(3)
@@ -29,19 +31,35 @@ def realtime_page(processor):
     if "historical_data" not in st.session_state:
         st.session_state["historical_data"] = []
 
-    if st.button("Start Streaming"):
-        st.session_state["historical_data"] = []
+    if "is_streaming" not in st.session_state:
+        st.session_state["is_streaming"] = False
 
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Start Streaming"):
+            st.session_state["is_streaming"] = True
+            st.session_state["historical_data"] = []
+
+    with col2:
+        if st.button("Stop Streaming"):
+            st.session_state["is_streaming"] = False
+
+    if "metric_placeholder" not in st.session_state:
+        st.session_state["metric_placeholder"] = st.empty()
+    if "price_chart" not in st.session_state:
+        st.session_state["price_chart"] = st.empty()
+
+    if st.session_state["is_streaming"]:
         processor.data_producer.start_realtime_streaming(
             symbol, start_date=start_date, end_date=end_date, interval=update_interval
         )
 
-        chart_placeholder = st.empty()
+        while st.session_state["is_streaming"]:
 
-        while True:
             new_data = processor.realtime_consumer.get_latest_data()
 
-            if new_data:
+            if new_data and "data" in new_data:
                 st.session_state["historical_data"].append(
                     {
                         "Date": pd.to_datetime(new_data["data"]["Date"]),
@@ -50,13 +68,10 @@ def realtime_page(processor):
                 )
 
                 df = pd.DataFrame(st.session_state["historical_data"])
-
                 df["Returns"] = df["Close"].pct_change() * 100
 
-                fig1 = go.Figure()
-                fig2 = go.Figure()
-
-                fig1.add_trace(
+                fig = go.Figure()
+                fig.add_trace(
                     go.Scatter(
                         x=df["Date"],
                         y=df["Close"],
@@ -65,34 +80,27 @@ def realtime_page(processor):
                     )
                 )
 
-                fig1.update_layout(
+                fig.update_layout(
                     title=f"{symbol} Stock Price",
                     xaxis_title="Date",
                     yaxis_title="Price",
-                    height=300,
+                    height=250,
                     showlegend=True,
                     legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
                 )
 
-                fig2.add_trace(
-                    go.Scatter(
-                        x=df["Date"],
-                        y=df["Returns"],
-                        name="Returns (%)",
-                        line=dict(color="red"),
-                    )
+                st.session_state["price_chart"].plotly_chart(
+                    fig, use_container_width=True
                 )
-
-                fig2.update_layout(
-                    title="Returns (%)",
-                    xaxis_title="Date",
-                    yaxis_title="Returns (%)",
-                    height=300,
-                    showlegend=True,
-                    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+                st.session_state["metric_placeholder"].metric(
+                    "Current Returns (%)",
+                    f"{df['Returns'].iloc[-1]:.2f}",
+                    (
+                        f"{df['Returns'].iloc[-1] - df['Returns'].iloc[-2]:.2f}"
+                        if len(df) > 1
+                        else 0.0
+                    ),
                 )
-
-                chart_placeholder.plotly_chart(fig1, use_container_width=True)
-                chart_placeholder.plotly_chart(fig2, use_container_width=True)
-
+            else:
+                st.error(new_data)
             sleep(1)

@@ -10,14 +10,17 @@ from models import METHODS
 
 
 class BaseProducer:
-    def __init__(self):
+    def __init__(self, kafka_host: str):
         self.producer = KafkaProducer(
-            bootstrap_servers=["kafka:9092"],
+            bootstrap_servers=[f"{kafka_host}:9092"],
             value_serializer=lambda x: json.dumps(x).encode("utf-8"),
         )
 
 
 class StockDataProducer(BaseProducer):
+    def __init__(self):
+        super().__init__("kafka-raw")
+
     def get_stock_data(
         self,
         symbol: str,
@@ -142,11 +145,14 @@ class StockDataProducer(BaseProducer):
 
 
 class StockMetricsProducer(BaseProducer):
+    def __init__(self):
+        super().__init__("kafka-metrics")
+
     def calculate_metrics(self, df: pd.DataFrame) -> dict:
 
-        current_price = df["Close"][-1]
-        price_change = df["Close"][-1] - df["Close"][0]
-        price_change_pct = (price_change / df["Close"][0]) * 100
+        current_price = df["Close"].iloc[-1]
+        price_change = df["Close"].iloc[-1] - df["Close"].iloc[0]
+        price_change_pct = (price_change / df["Close"].iloc[0]) * 100
 
         df["MA20"] = df["Close"].rolling(window=20).mean()
         df["MA50"] = df["Close"].rolling(window=50).mean()
@@ -205,10 +211,13 @@ class StockMetricsProducer(BaseProducer):
 
 
 class StockPredictionProducer(BaseProducer):
-    def get_prediction(self, method_name: str, hist: pd.DataFrame) -> None:
+    def __init__(self):
+        super().__init__("kafka-predictions")
+
+    def get_prediction(self, method_name: str, hist: pd.DataFrame, **kwargs) -> None:
         try:
             method = METHODS[method_name]()
-            results = method.generate_prediction(hist)
+            results = method.generate_prediction(hist, **kwargs)
 
             self.producer.send(
                 "prediction_data",
